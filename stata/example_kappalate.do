@@ -1,21 +1,11 @@
-clear
+        use https://economics.mit.edu/sites/default/files/inline-files/sipp2.dta, clear
 
-do "kappalate.ado"
-do "cbps.ado"
-cls 
-clear matrix
-clear mata
-set maxvar 120000
+        drop if kwage==. | educ==. | rsncode==999
 
-use "Abadie2003_data.dta"
+        generate double lwage = ln(kwage)
 
-egen incst= std(inc)
-egen age25st= std(age25)
-egen age25sqst= std(age25sq)
-egen fsizest = std(fsize)
+        kappalate lwage (nvstat=rsncode) age_5, zmodel(cbps) which(norm)
 
-kappalate net_tfa p401 e401 incst age25st age25sqst marr fsizest
+        kappalate lwage (nvstat=rsncode) age_5, zmodel(cbps) which(all)
 
-kappalate net_tfa p401 e401 incst age25st age25sqst marr fsizest, zmodel(cbps)
-
-kappalate net_tfa p401 e401 incst age25st age25sqst marr fsizest, zmodel(probit)
+        kappalate lwage (nvstat=rsncode) age_5, zmodel(logit) which(all)
