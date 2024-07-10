@@ -9,8 +9,8 @@
 ** changes in version 1.0.2:
 ** allow for tau_u with multivalued treatments
 
-capture program drop kappalate
-program define kappalate, eclass
+capture program drop kappalate_factorderya
+program define kappalate_factorderya, eclass
 	version 17
 	syntax anything [if] [in] [, zmodel(string) vce(string) std(string) which(string)]
 	
@@ -92,15 +92,19 @@ program define kappalate, eclass
 		exit
 	}
 	
-	 quietly {
+	* quietly {
 	 	fvexpand `xvarsips'
-	 //return list
 	local fvops = "`r(fvops)'" == "true" 
 if `fvops' {
-	qui foreach wrd in `r(varlist)' {
-    if strpos("`wrd'", "b.") == 0 local result `result' `wrd'
+		foreach wrd in `r(varlist)' {
+   if strpos("`wrd'", "b.")!=0 local wrdc = regexr("`wrd'","b","")
+			else local wrdc `wrd'
+						local result `result' `wrdc'
     }
+	di `result'
+	di "`xvarsips'"
 	local xvarsips  `result'
+	di "`xvarsips'"
 }
 else {
 	local xvarsips `xvarsips'
@@ -135,7 +139,7 @@ if `fvops' {
 
 
 	}
-	 }
+	 *}
 	
 	// declare tempvars and tempnames
 	tempvar ips ipsxb1 ipsxb2 numhat kappaw kappa_0 kappa_1 num1hat num0hat y1hat y0hat d1hat d0hat
@@ -168,15 +172,21 @@ if `fvops' {
 	}
 	
 	// main estimation procedure
-	quietly {
+	*quietly {
 		// estimation of the instrument propensity score
 		if "`zmodel'"!="cbps" {
+					di "List of variables"
+			di "`xvarsips'"
+			di "`zmodel' `zvar' `xvarsips'"
 			`zmodel' `zvar' `xvarsips' if `touse'==1
 			matrix `bips' = e(b)
 			predict double `ips'
 		}
 		else {
 			// determine starting values from logit
+			di "List of variables"
+			di "`xvarsips'"
+			di "`zmodel' `zvar' `xvarsips'"
 			logit `zvar' `xvarsips' if `touse'==1
 			matrix `starting' = e(b)
 			
@@ -441,7 +451,7 @@ if `fvops' {
 		scalar `var_tau_norm' = `vc_tau_norm'[`r_tau_norm', `r_tau_norm']
 		
 		scalar `N' = e(N)
-	}
+	*}
 	
 	// display results
 	if `bintreat'==0 {
@@ -530,3 +540,4 @@ if `fvops' {
 	
 	ereturn display
 end
+cls
