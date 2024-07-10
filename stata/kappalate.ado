@@ -92,26 +92,50 @@ program define kappalate, eclass
 		exit
 	}
 	
-	// standardize the non-binary variables
+	 quietly {
+	 	fvexpand `xvarsips'
+	 //return list
+	local fvops = "`r(fvops)'" == "true" 
+if `fvops' {
+	qui foreach wrd in `r(varlist)' {
+    if strpos("`wrd'", "b.") == 0 local result `result' `wrd'
+    }
+	local xvarsips  `result'
+}
+else {
+	local xvarsips `xvarsips'
+}
+
+	di "`xvarsips'"
+	
 	if "`std'"=="on" {
-		foreach x in `xvarsips' {
-			tempvar `x'_ips_st
-			qui tab `x' if `touse'
-			if r(r)!=2 {
-				egen double ``x'_ips_st' = std(`x')
+   foreach x in `xvarsips' {
+	fvexpand `x'
+	return list
+local fvops = "`r(fvops)'" == "true" 
+if `fvops' {
+    local resultn `resultn' `x'
+}
+	else {
+     tempvar `x'_ips_st		
+     tab `x' if `touse'	
+	if r(r) > 2 {
+		egen  ``x'_ips_st' = std(`x')
 			}
 			else {
-				gen double ``x'_ips_st' = `x'
-			}
-		}
-		
-		local xvarsips_STD
-		foreach item in `xvarsips' {
-			local xvarsips_STD `xvarsips_STD' ``item'_ips_st'
-		}
-		
-		local xvarsips "`xvarsips_STD'"
+		gen ``x'_ips_st' = `x'
+		}	
+	local resultn `resultn' ``x'_ips_st'
 	}
+	
+	}
+
+	local xvarsips  `resultn'
+	//di "`xvarsips'"
+
+
+	}
+	 }
 	
 	// declare tempvars and tempnames
 	tempvar ips ipsxb1 ipsxb2 numhat kappaw kappa_0 kappa_1 num1hat num0hat y1hat y0hat d1hat d0hat
