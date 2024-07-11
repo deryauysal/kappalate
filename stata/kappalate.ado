@@ -1,4 +1,4 @@
-*! version 1.0.2  26jun2024  S. Derya Uysal, Tymon Sloczynski, and Jeffrey M. Wooldridge
+*! version 1.0.2  10Jul2024  S. Derya Uysal, Tymon Sloczynski, and Jeffrey M. Wooldridge
 
 ** changes in version 1.0.1:
 ** tau_t,norm --> tau_u
@@ -8,6 +8,8 @@
 
 ** changes in version 1.0.2:
 ** allow for tau_u with multivalued treatments
+** In action: Factor variables check
+** It seems to work fine with, see details in the description
 
 capture program drop kappalate_factorderya
 program define kappalate_factorderya, eclass
@@ -92,7 +94,7 @@ program define kappalate_factorderya, eclass
 		exit
 	}
 	
-	* quietly {
+	quietly {
 	 	fvexpand `xvarsips'
 	local fvops = "`r(fvops)'" == "true" 
 if `fvops' {
@@ -139,7 +141,7 @@ if `fvops' {
 
 
 	}
-	 *}
+	 }
 	
 	// declare tempvars and tempnames
 	tempvar ips ipsxb1 ipsxb2 numhat kappaw kappa_0 kappa_1 num1hat num0hat y1hat y0hat d1hat d0hat
@@ -172,7 +174,7 @@ if `fvops' {
 	}
 	
 	// main estimation procedure
-	*quietly {
+	quietly {
 		// estimation of the instrument propensity score
 		if "`zmodel'"!="cbps" {
 					di "List of variables"
@@ -451,7 +453,7 @@ if `fvops' {
 		scalar `var_tau_norm' = `vc_tau_norm'[`r_tau_norm', `r_tau_norm']
 		
 		scalar `N' = e(N)
-	*}
+	}
 	
 	// display results
 	if `bintreat'==0 {
