@@ -1,0 +1,203 @@
+new;cls;
+@prints the simulations results in appendix Tables B1-B5
+define the pfad where the simualtion results are saved@
+
+
+
+
+//pfad = "C:\\research\\LATE\\gauss_late_kappa\\simulation codes for paper";
+
+workdirec = pfad ;
+chdir ^workdirec;
+
+outpfad  =  pfad $+"\\Simualations_Kappa_01112023"; 
+ 
+mc=10000;   //mc=1;
+deltav={0.01, 0.02, 0.05}; //(delta,1-delta) overlap
+
+for j(1,5,1); //designs
+
+for dl(1,3,1);
+for k(1,3,1);//sample size
+    if k==1;n=500;
+    elseif k==2;n=1000;
+    elseif k==3;n=5000;
+    endif;
+    
+    //load the estimates 
+    
+    name_est="LATE_est_heiler_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+    name_est_cbps="LATE_est_cbps_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+ests_late = loadd(name_est, "iv + tau_t + tau_t_2 + norm + tau_a + tau_a_2");
+ests_late_cbps = loadd(name_est_cbps);
+//load the standard errors:
+    name_estse_cbps="LATE_estse_cbps_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+name_estse="LATE_estse_heiler_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+
+se_late = loadd(name_estse, "iv + tau_t + tau_t_2 + norm + tau_a + tau_a_2");
+se_late_cbps = loadd(name_estse_cbps);
+//load the true lates:
+name_true="trueLATE_sim_heiler_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+latemc = loadd(name_true);
+    
+    //load the retcode for cbps
+name_ret="LATE_estretcode_cbps_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+retcode_cbps=loadd(name_ret);
+
+
+//ests_late_cbps=selif(ests_late_cbps, retcode_cbps[.,3].==1); ./= 
+//se_late_cbps=selif(se_late_cbps, retcode_cbps[.,3].==1);
+
+
+df_estimates=dfname(ests_late~ests_late_cbps[.,3], "iv" $| "taut"$|"tautn" $| "taua"$|"taua0"$|"taua10"$|"cbps"); 
+name1=outpfad $+"\\LATE_estsall_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+saveate=saved(df_estimates,name1);
+df_stderrors=dfname(se_late~se_late_cbps[.,3], "iv" $| "taut"$|"tautn" $| "taua"$|"taua0"$|"taua10"$|"cbps"); 
+name1=outpfad $+"\\LATE_sesall_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+saveate=saved(df_stderrors,name1);
+
+
+ests_late_cbps_s= missex(ests_late_cbps[.,3], retcode_cbps[.,3]./= 1);
+se_late_cbps_s= missex(se_late_cbps[.,3], retcode_cbps[.,3]./= 1);
+
+df_estimates=dfname(ests_late~ests_late_cbps_s, "iv" $| "taut"$|"tautn" $| "taua"$|"taua0"$|"taua10"$|"cbps"); 
+name1=outpfad $+"\\LATE_estsall_conv_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+saveate=saved(df_estimates,name1);
+df_stderrors=dfname(se_late~se_late_cbps_s, "iv" $| "taut"$|"tautn" $| "taua"$|"taua0"$|"taua10"$|"cbps"); 
+name1=outpfad $+"\\LATE_sesall_conv_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+saveate=saved(df_stderrors,name1);
+
+MSE = meanc((ests_late - latemc)^2);
+BIAS = abs(meanc(ests_late - latemc));
+RMSE = MSE./MSE[1];
+RBIAS = BIAS./BIAS[1];
+
+MCVar  =((1/(rows(ests_late)-1)).*sumc((ests_late-meanc(ests_late)').^2));
+
+//Hypothesis Testing and Confidence Intervals
+conflev=0.05;
+//Power Calculations
+ts1=(ests_late - latemc)./se_late;
+pval1=2*(1-cdfn(abs(ts1)));
+temp1=(pval1.<conflev);
+power1=meanc(temp1);
+
+
+
+
+
+//Coverage
+
+
+lci1=ests_late-cdfni(.975).*se_late;
+uci1=ests_late+cdfni(.975).*se_late;
+
+
+cov1temp=(latemc.<uci1 .and latemc.>lci1 );
+
+cov1=meanc(cov1temp);
+
+
+//Relative Criteria for Variance Estimators
+//Relative Bias for Variance
+Vhat1=(meanc(se_late.^2));  //(var based on M Estimation)
+
+RelBiasVar1=Vhat1./MCVar;
+
+
+//CBPS:
+MSE_cbps = meanc((ests_late_cbps[.,3] - latemc)^2);
+BIAS_cbps = abs(meanc(ests_late_cbps[.,3] - latemc));
+RMSE_cbps = MSE_cbps./MSE[1];
+RBIAS_cbps = BIAS_cbps./BIAS[1];
+
+MCVar_cbps  =((1/(rows(ests_late_cbps[.,3])-1)).*sumc((ests_late_cbps[.,3]-meanc(ests_late_cbps[.,3])').^2));
+
+//Hypothesis Testing and Confidence Intervals
+conflev=0.05;
+//Power Calculations
+ts1_cbps=(ests_late_cbps[.,3] - latemc)./se_late_cbps[.,3];
+pval1_cbps=2*(1-cdfn(abs(ts1_cbps)));
+temp1_cbps=(pval1_cbps.<conflev);
+power1_cbps=meanc(temp1_cbps);
+
+
+
+
+
+//Coverage
+
+
+lci1_cbps=ests_late_cbps[.,3]-cdfni(.975).*se_late_cbps[.,3];
+uci1_cbps=ests_late_cbps[.,3]+cdfni(.975).*se_late_cbps[.,3];
+
+
+cov1temp_cbps=(latemc.<uci1_cbps .and latemc.>lci1_cbps );
+
+cov1_cbps=meanc(cov1temp_cbps);
+
+
+//Relative Criteria for Variance Estimators
+//Relative Bias for Variance
+Vhat1_cbps=(meanc(se_late_cbps[.,3].^2));  //(var based on M Estimation)
+
+RelBiasVar1_cbps=Vhat1_cbps./MCVar_cbps;
+
+
+MSE=MSE|MSE_cbps;
+BIAS=BIAS|BIAS_cbps;
+RelBiasVar1=RelBiasVar1|RelBiasVar1_cbps;
+power1=power1|power1_cbps;
+
+
+RMSE=RMSE[1]|RMSE_cbps|RMSE[3]|RMSE[6]|RMSE[4]|RMSE[2]|RMSE[5];
+
+RBIAS= RBIAS[1]|RBIAS_cbps|RBIAS[3]|RBIAS[6]|RBIAS[4]|RBIAS[2]|RBIAS[5];
+cov1=cov1[1]|cov1_cbps|cov1[3]|cov1[6]|cov1[4]|cov1[2]|cov1[5];
+
+
+
+methods = "iv"$|"cbps" $|"tau_u"$|"tau_a,10" $| "tau_a"$|"tau_t"$| "tau_a,0";
+
+print "";
+//j~dl~k;
+
+print "";
+if j==1 ;
+    print "Simulation Results for Design A.1";
+elseif j==2;
+       print "Simulation Results for Design A.2";
+elseif j==3; 
+           print "Simulation Results for Design B";
+elseif j==4;
+           print "Simulation Results for Design C";
+elseif j==5; 
+           print "Simulation Results for Design D";
+endif;
+print "------------------------------------------------------------------------------------------------------------------------------";
+print "Methods: s" $methods';
+if dl==1 ;
+    print "delta==0.01";
+elseif dl==2;
+       print "delta==0.02";
+elseif dl==3; 
+      print "delta==0.05";
+endif;
+if k==1 ;
+    print "N=500";
+elseif k==2;
+       print "N=1000";
+elseif k==3; 
+           print "N=5000";
+endif;
+
+format /rd 16,2;
+"MSE      " RMSE';
+format /rd 16,4;
+"|B|      " BIAS';
+format /rd 16,2;
+"Cov. Rate" cov1';
+
+endfor;
+endfor;
+endfor;

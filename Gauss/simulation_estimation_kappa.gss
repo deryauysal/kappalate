@@ -1,0 +1,387 @@
+/*
+Simulates data as decribed in the paper
+for j: 1 (A1), 2 (A2), 3(B), 4 (C), 5(D)
+for k: 1 (n=500), 2 (n=1000), 3 (n=5000)
+for dl: 1(delta=0.01), 2(delta=0.02), 3(delta=0.05)
+mc: number of simulations
+saves:
+for each j,k,dl combination 4 csv files are saved. 
+1) late estimates by each method x ips combination and IV for each Montecarlo sample
+2) asymptotic se of 1)
+3) Monte Carlo summaries
+4) some other results 
+
+details: 
+
+Estimates late's mc X 11 : 
+1-iv, 2-tau_(a,1) with logit, 3-tau_u w/logit, 4-tau_a w/logit, 5-tau_(a,0) w/logit, 6-tau_(a,10) w/logit
+7-tau_(a,1) with cbps, 8-tau_u w/cbps, 9-tau_a w/cbps, 10-tau_(a,0) w/cbps, 11-tau_(a,10) w/cbps
+
+df_estimates=dfname(ests_late_ns,"iv" $| "taut"$|"tautn" $| "taua"$|"taua0"$|"taua10"  $| "tautc"$|"tautnc" $| "tauac"$|"taua0c"$|"taua10c"); 
+name_est="LATE_est_heiler_all_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+saveate=saved(df_estimates,name_est);
+
+asymptotic se late's mc X 11 : 
+df_estimatesse=dfname(eststderr_late,"iv" $| "taut"$|"tautn" $| "taua"$|"taua0"$|"taua10"  $| "tautc"$|"tautnc" $| "tauac"$|"taua0c"$|"taua10c"); 
+name_estse="LATE_estse_heiler_all_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+saveate=saved(df_estimatesse,name_estse);
+
+Monte carlo summaries calcualted and saved:  11 X 7 
+results_late=MSE~BIAS~RMSE~RBIAS~power1~cov1~RelBiasVar1;
+df_results=dfname(results_late, "MSE"$|"BIAS"$|"RMSE"$|"RBIAS"$|"power1"$|"cov1"$|"RelBiasVar1"); 
+name1="LATE_sim_heiler_all_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+saveate=saved(df_results,name1);
+
+Some other stats for each simualtion mc X 9 
+  [,1]=coefz; first stage coeffcient of the instrument
+  [,2]=mkappa1; mean of kappa_1i (logit)
+  [,3]=mkappa0; mean of kappa_0i (logit)
+  [,4]=mkappa; mean of kappa_i (logit)
+  [,5]=late_norm_ns.pars[rows(late_norm_ns.pars)-1]; denominator of tau_u (logit)
+  [,6]=mkappa1_cbps;  mean of kappa_1i (cbps)
+  [,7]=mkappa0_cbps;  mean of kappa_0i (cbps)
+  [,8]=mkappa_cbps;  mean of kappa_i (cbps)
+  otherresults[,9]=late_norm_cbps.pars[rows(late_norm_cbps.pars)-1]; denominator of tau_u (cbps)
+
+other_results=dfname(otherresults, "Fstage"$|"kappa 1"$|"kappa 0"$|"kappa"$|"normlate"$|"kappa1c"$|"kappa0c"$|"kappac"$|"normlatec"); 
+name2="LATE_sim_heiler_other_all_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+saveate2=saved(other_results,name2);
+
+*/
+
+
+
+
+new;cls;
+struct OutputsLATE {
+   matrix late;
+   matrix latese;
+   matrix pars; // ips coeff, two means in numerator two means in denominator
+   matrix parsse;
+   matrix retcode;
+};
+struct OutputsCBPS {
+   matrix pars; // ips coeff, to means in numerator tow means in denominator
+   matrix parsse;
+   matrix retcode;
+};
+
+rndseed 210609;
+for k(1,3,1);//sample size
+mc=2;
+deltav={0.01, 0.02, 0.05}; //(delta,1-delta) overlap
+
+for j(1,5,1); //designs
+
+
+for dl(1,3,1);
+
+    if k==1;n=500;
+    elseif k==2;n=1000;
+    elseif k==3;n=5000;
+    endif;
+latev=zeros(mc,1);    
+
+ests_late_ns= zeros(mc,11);
+    
+eststderr_late =zeros(mc,11);
+
+otherresults=zeros(mc,9);
+    
+    
+    /*
+     - the first stage coefficient on Z from linear IV/2SLS
+ - the sample mean of kappa
+ - the sample mean of kappa1
+ - the sample mean of kappa0
+ - the denominator of the normalized IPW estimator of LATE
+ - the denominator of the DR LATE estimator
+    */
+    
+for i(1,mc,1);
+    
+x=rndu(n,1);
+u=rndu(n,1);
+
+    //Draw three error terms from a joint distribution
+    epsm={0,0, 0};
+    epsigma= {1 0 0.5, 0 1 0, 0.5 0 1};
+    eps = rndMVn(n, epsm, epsigma);
+    eps1 = eps[.,1];
+    eps0 = eps[.,2];
+    
+
+    theta0=ln((1-deltav[dl])/deltav[dl]);
+    
+   
+
+
+    if j==1;
+    mz1=4;
+    mz0=0;
+    my1=0.3989;    
+    muzx=2*x-1;    
+    elseif j==2;
+    mz1=0;
+    mz0=-4; 
+    my1=0.3989;    
+    muzx=2*x-1;         
+    elseif j==3;
+    mz1=(-1+2*x+2.122);
+    mz0=(-1+2*x);
+    my1=0.3989;    
+    muzx=2*x-1; 
+    elseif j==4;
+    mz1=(-1+2*x+2.122);
+    mz0=(-1+2*x); 
+    my1=9*(x+3).^2;
+    muzx=2*x-1;
+    elseif j==5;
+    mz1=(-1+2*x+2.122);
+    mz0=(-1+2*x);
+    my1=9*(x+3).^2;
+    muzx=x+x.^2-1;
+    endif;
+    
+    pix=1./(1+exp(-(muzx)*theta0));
+
+    z=(u.<pix);
+    
+    d1=(mz1.>eps[.,3]);
+    d0=(mz0.>eps[.,3]);
+    
+ 
+    y1=my1+eps1;
+    y0=eps0;
+    
+    d=z.*d1+(1-z).*d0;
+    y=d.*y1+(1-d).*y0;
+    
+    comdum = (d1 .== 1 .and d0 .== 0);
+    atdum  = (d1 .== 1 .and d0 .== 1);
+    ntdum  = (d1 .== 0 .and d0 .== 0);
+    defdum = (d1 .== 0 .and d0 .== 1);
+    
+    
+    late=meanc(selif((y1-y0), comdum .==1));    
+    //resultsall[k,i,.]=late~allestimation(y,x,d,z);
+    latev[i]=late;
+    //late = meanc( (y1 - y0).*(d1 - d0) )/meanc(d1 - d0) /*Heiler calculates 
+
+  Dmat = ones(n,1)~d~x;  
+  Zmat = ones(n,1)~z~x;  
+  bhat = inv(Zmat'*Dmat)*Zmat'*y;  
+  //first stage
+  bfst = inv(Zmat'*Zmat)*Zmat'*d;  
+  coefz= bfst[2];
+  otherresults[i,1]=coefz;
+  lateiv=bhat[2];
+  res_iv= y - Dmat*bhat; 
+  dg=rows(Dmat)-cols(Dmat);
+
+  sigma_iv=sumc(res_iv^2)/dg ;
+  V_thetaiv_ho= sigma_iv*(inv(Dmat'*Zmat*inv(Zmat'*Zmat)*Zmat'*Dmat));
+  std_iv_ho = sqrt(diag(V_thetaiv_ho));
+  lateiv_se= std_iv_ho[2];
+  
+   
+   
+struct DS dlate;
+dlate = dsCreate;
+dlate = reshape(dlate,6,1);
+dlate[1].dataMatrix = ones(n,1)~x;//    x;
+dlate[2].dataMatrix = y;
+dlate[3].dataMatrix = d;
+dlate[4].dataMatrix = z;
+dlate[5].type = 1; //1: logit, 2:probit, 3:CBPS
+dlate[6].type = n; 
+ 
+struct DS dlate_cbps;
+dlate_cbps = dsCreate;
+dlate_cbps = reshape(dlate,6,1);
+dlate_cbps[1].dataMatrix = ones(n,1)~x;//    x;
+dlate_cbps[2].dataMatrix = y;
+dlate_cbps[3].dataMatrix = d;
+dlate_cbps[4].dataMatrix = z;
+dlate_cbps[5].type = 3; //1: logit, 2:probit, 3:CBPS
+dlate_cbps[6].type = n; 
+   
+//print "/******************************************************************/";
+//print "/*******************KAPPA1 ****************************************/";
+
+struct OutputsLATE late_k1_ns;
+late_k1_ns = mm_late_nosolve(&kappa1late_mom, &kappa1late_crossmom, dlate );
+
+//Calculate sample mean of kappa1
+//Estimate ips
+ips1=exp((ones(n,1)~x)*late_k1_ns.pars[1:2])./(1+exp((ones(n,1)~x)*late_k1_ns.pars[1:2]));
+kappa1=d.*((z-ips1)./(ips1.*(1-ips1)));
+mkappa1=meanc(kappa1);
+otherresults[i,2]=mkappa1;
+
+struct OutputsLATE late_k1_cbps;
+late_k1_cbps = mm_late_nosolve(&kappa1late_mom, &kappa1late_crossmom, dlate_cbps );
+
+//Calculate sample mean of kappa1
+//Estimate ips
+ips1_cbps=exp((ones(n,1)~x)*late_k1_cbps.pars[1:2])./(1+exp((ones(n,1)~x)*late_k1_cbps.pars[1:2]));
+kappa1_cbps=d.*((z-ips1_cbps)./(ips1_cbps.*(1-ips1_cbps)));
+mkappa1_cbps=meanc(kappa1_cbps);
+otherresults[i,6]=mkappa1_cbps;
+
+//print "/******************************************************************/";
+//print "/*******************KAPPA0 ****************************************/";
+
+ struct OutputsLATE late_k0_ns;
+late_k0_ns = mm_late_nosolve(&kappa0late_mom, &kappa0late_crossmom, dlate );
+
+//Calculate sample mean of kappa0
+//Estimate ips
+ips0=exp((ones(n,1)~x)*late_k0_ns.pars[1:2])./(1+exp((ones(n,1)~x)*late_k0_ns.pars[1:2]));
+kappa0=(1-d).*(((1-z)-(1-ips0))./(ips0.*(1-ips0)));
+mkappa0=meanc(kappa0);
+otherresults[i,3]=mkappa0;
+
+
+ struct OutputsLATE late_k0_cbps;
+late_k0_cbps = mm_late_nosolve(&kappa0late_mom, &kappa0late_crossmom, dlate_cbps );
+
+//Calculate sample mean of kappa0
+//Estimate ips
+ips0_cbps=exp((ones(n,1)~x)*late_k0_cbps.pars[1:2])./(1+exp((ones(n,1)~x)*late_k0_cbps.pars[1:2]));
+kappa0_cbps=(1-d).*(((1-z)-(1-ips0_cbps))./(ips0_cbps.*(1-ips0_cbps)));
+mkappa0_cbps=meanc(kappa0_cbps);
+otherresults[i,7]=mkappa0_cbps;
+
+
+//print "/******************************************************************/";
+//print "/*******************KAPPA  ****************************************/";
+
+struct OutputsLATE late_k_ns;
+late_k_ns = mm_late_nosolve(&kappalate_mom, &kappalate_crossmom, dlate );
+
+//Calculate sample mean of kappa
+//Estimate ips
+ips=exp((ones(n,1)~x)*late_k_ns.pars[1:2])./(1+exp((ones(n,1)~x)*late_k_ns.pars[1:2]));
+kappa= 1 - (d.*(1-z)./(1-ips))-((1-d).*z./ips);
+mkappa=meanc(kappa);
+otherresults[i,4]=mkappa;
+
+struct OutputsLATE late_k_cbps;
+late_k_cbps = mm_late_nosolve(&kappalate_mom, &kappalate_crossmom, dlate_cbps );
+
+//Calculate sample mean of kappa
+//Estimate ips
+ips_cbps=exp((ones(n,1)~x)*late_k_cbps.pars[1:2])./(1+exp((ones(n,1)~x)*late_k_cbps.pars[1:2]));
+kappa_cbps= 1 - (d.*(1-z)./(1-ips_cbps))-((1-d).*z./ips_cbps);
+mkappa_cbps=meanc(kappa_cbps);
+otherresults[i,8]=mkappa_cbps;
+//print "/******************************************************************/";
+//print "/*******************KAPPA norm ************************************/";
+
+struct OutputsLATE late_knorm_ns;
+late_knorm_ns = mm_late_nosolve(&normkappalate_mom, &normkappalate_crossmom, dlate );
+
+struct OutputsLATE late_knorm_cbps;
+late_knorm_cbps = mm_late_nosolve(&normkappalate_mom, &normkappalate_crossmom, dlate_cbps );
+
+
+//print "/******************************************************************/";
+//print "/******************* NORM LATE ************************************/";
+
+struct OutputsLATE late_norm_ns;
+late_norm_ns = mm_late_nosolve(&normlate_mom, &normlate_crossmom, dlate );
+otherresults[i,5]=late_norm_ns.pars[rows(late_norm_ns.pars)-1];
+
+
+struct OutputsLATE late_norm_cbps;
+late_norm_cbps = mm_late_nosolve(&normlate_mom, &normlate_crossmom, dlate_cbps );
+otherresults[i,9]=late_norm_cbps.pars[rows(late_norm_cbps.pars)-1];
+//Save the estimates:
+    ests_late_ns[i,.] =lateiv~late_k1_ns.late~late_norm_ns.late~late_k_ns.late~late_k0_ns.late~late_knorm_ns.late~late_k1_cbps.late~late_norm_cbps.late~late_k_cbps.late~late_k0_cbps.late~late_knorm_cbps.late;
+    eststderr_late[i,.] =lateiv_se~late_k1_ns.latese~late_norm_ns.latese~late_k_ns.latese~late_k0_ns.latese~late_knorm_ns.latese~late_k1_cbps.latese~late_norm_cbps.latese~late_k_cbps.latese~late_k0_cbps.latese~late_knorm_cbps.latese;
+
+cls;
+    format /rd 16,1;
+    "###################################################";
+     "###################################################";   
+    "MC" i; "j" j; "dl" dl; "k" k;
+        "###################################################";
+            "###################################################";
+   /* format /rd 16,4;
+    ests_late[i,.];
+  */  
+    //cls;
+endfor;
+
+methods = "iv" $| "tau_t"$|"tau_t,norm" $| "tau_a"$|"tau_a,0"$|"tau_a,10";
+
+df_estimates=dfname(ests_late_ns,"iv" $| "taut"$|"tautn" $| "taua"$|"taua0"$|"taua10"  $| "tautc"$|"tautnc" $| "tauac"$|"taua0c"$|"taua10c"); 
+name_est="LATE_est_heiler_all_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+saveate=saved(df_estimates,name_est);
+
+df_estimatesse=dfname(eststderr_late,"iv" $| "taut"$|"tautn" $| "taua"$|"taua0"$|"taua10"  $| "tautc"$|"tautnc" $| "tauac"$|"taua0c"$|"taua10c"); 
+name_estse="LATE_estse_heiler_all_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+saveate=saved(df_estimatesse,name_estse);
+
+meanc(latev);
+meanc(eststderr_late);
+
+ests_late = ests_late_ns;
+latemc = meanc(latev);
+MSE = meanc((ests_late - latemc)^2);
+BIAS = abs(meanc(ests_late - latemc));
+RMSE = MSE./MSE[1];
+RBIAS = BIAS./BIAS[1];
+
+MCVar  =((1/(rows(ests_late)-1)).*sumc((ests_late-meanc(ests_late)').^2));
+
+//Hypothesis Testing and Confidence Intervals
+conflev=0.05;
+//Power Calculations
+ts1=(ests_late - latemc)./eststderr_late;
+pval1=2*(1-cdfn(abs(ts1)));
+temp1=(pval1.<conflev);
+power1=meanc(temp1);
+
+
+
+
+
+//Coverage
+
+
+lci1=ests_late-cdfni(.975).*eststderr_late;
+uci1=ests_late+cdfni(.975).*eststderr_late;
+
+
+
+cov1temp=(latemc.<uci1 .and latemc.>lci1 );
+
+cov1=meanc(cov1temp);
+
+
+//Relative Criteria for Variance Estimators
+//Relative Bias for Variance
+Vhat1=(meanc(eststderr_late.^2));  //(var based on M Estimation)
+
+RelBiasVar1=Vhat1./MCVar;
+
+
+
+results_late=MSE~BIAS~RMSE~RBIAS~power1~cov1~RelBiasVar1;
+df_results=dfname(results_late, "MSE"$|"BIAS"$|"RMSE"$|"RBIAS"$|"power1"$|"cov1"$|"RelBiasVar1"); 
+name1="LATE_sim_heiler_all_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+saveate=saved(df_results,name1);
+
+other_results=dfname(otherresults, "Fstage"$|"kappa 1"$|"kappa 0"$|"kappa"$|"normlate"$|"kappa1c"$|"kappa0c"$|"kappac"$|"normlatec"); 
+name2="LATE_sim_heiler_other_all_"$+ftos((j),"%*.*lf",1,0)$+"_"$+ftos((dl),"%*.*lf",1,0)$+"_"$+ftos((k),"%*.*lf",1,0)$+"_"$+ftos((mc),"%*.*lf",1,0)$+".csv";
+saveate2=saved(other_results,name2);
+
+
+
+cls;
+endfor;
+endfor;
+endfor;
+
