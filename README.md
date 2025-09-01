@@ -34,7 +34,7 @@ Contact
 You can report issues and ask questions in the repository's issues page. If you choose to send an email instead, please direct it to Derya Uysal at derya.uysal@econ.lmu.de and include [kappalate] in the subject line.
 
 ## Acknowledgments
-Special thanks to **Lennart Ohly** for extensive work on the R implementation. *(If you’d like, you can link his name to a profile here.)*
+Special thanks to **Lennart Ohly** for extensive work on the R implementation. 
 
 
 Authors
