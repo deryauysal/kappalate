@@ -21,12 +21,20 @@ If you use this code please cite the paper using the bibtex reference below.
 # Stata
 It contains the Stata package to estimate the local average treatment effect (LATE) using Abadie's kappa approach and other weighting estimators (with Tymon Słoczyński and Jeffrey M. Wooldridge). To download from SSC, type “ssc install kappalate” in Stata.
 
+# R
+It contains the R package to estimate the local average treatment effect (LATE) using Abadie's kappa approach and other weighting estimators (with Tymon Słoczyński and Jeffrey M. Wooldridge).
+
+> **Status:** The R code is currently in **beta** and has **not been extensively tested**. Interfaces and results may change. Feedback, bug reports, and pull requests are very welcome.
+
 # Gauss
 It contains Gauss codes for the simulation part of the paper. 
 
 Contact
 -----------------
 You can report issues and ask questions in the repository's issues page. If you choose to send an email instead, please direct it to Derya Uysal at derya.uysal@econ.lmu.de and include [kappalate] in the subject line.
+
+## Acknowledgments
+Special thanks to **Lennart Ohly** for extensive work on the R implementation. *(If you’d like, you can link his name to a profile here.)*
 
 
 Authors
