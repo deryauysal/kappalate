@@ -1,0 +1,10 @@
+Package: kappalate
+Type: Package
+Title: Estimate weighted Kappa Estimators for the LATE  
+Version: 1.0.0
+Author: Related to "Abadie's Kappa and Weighting Estimators of the Local Average Treatment Effect" by Tymon Słoczyński, Derya Uysal, & Jeffrey M. Wooldridge
+Maintainer: Derya Uysal at <derya.uysal@econ.lmu.de>
+Description: Estimates the local average treatment effect (LATE) using methods based on inverse probability weighting, most of which can be motivated by Abadie's (2003) kappa theorem. See Słoczyński, Uysal, and Wooldridge (2024) for a detailed treatment of the underlying theoretical results.
+License: TBD
+Encoding: UTF-8
+LazyData: true
