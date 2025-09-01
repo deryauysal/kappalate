@@ -1,4 +1,3 @@
-@ -1,36 +0,0 @@
 # kappalate
 This repository contains companion code for the following paper:
 
