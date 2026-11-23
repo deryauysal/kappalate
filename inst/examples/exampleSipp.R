@@ -1,10 +1,10 @@
-### ** Examples
-
 # use the SIPP data
-install.packages("haven")  # Install if you haven't
+# install.packages("haven")  # if needed
+library(kappalate)
 library(haven)
 
-data <- read_dta("~/Documents/GitHub/kappalate/stata/sipp.dta")  # Replace with your actual file path
+# SIPP data shipped with the package
+data <- as.data.frame(read_dta(system.file("extdata", "sipp.dta", package = "kappalate")))
 
 
 # Drop rows where kwage is missing (NA) or educ is missing (NA) or rsncode == 999

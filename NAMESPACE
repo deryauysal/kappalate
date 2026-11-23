@@ -1,1 +1,6 @@
-exportPattern("^[[:alpha:]]+")
+export(kappalate)
+S3method(print, kappalate)
+import(geex)
+importFrom(Formula, Formula)
+importFrom(formula.tools, lhs, rhs)
+importFrom(stats, binomial, dnorm, formula, glm, lm, model.matrix, na.omit, plogis, pnorm, predict, reformulate)

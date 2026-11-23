@@ -19,7 +19,13 @@ If you use this code please cite the paper using the bibtex reference below.
 }
 ```
 # R
-It contains the R package to estimate the local average treatment effect (LATE) using Abadie's kappa approach and other weighting estimators (with Tymon Słoczyński and Jeffrey M. Wooldridge). You can download it via the `devtools` package and entering `install_github("LennartOhly/kappalate")`.
+It contains the R package to estimate the local average treatment effect (LATE) using Abadie's kappa approach and other weighting estimators (with Tymon Słoczyński and Jeffrey M. Wooldridge). You can install it with the `devtools` (or `remotes`) package:
+
+```r
+devtools::install_github("deryauysal/kappalate")
+```
+
+An example with the SIPP data used in the Stata help file is in `inst/examples/exampleSipp.R`. The R package is released under the MIT license (see `LICENSE.md`).
 
 Contact
 -----------------

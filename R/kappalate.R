@@ -1,27 +1,5 @@
-# Hello, world!
-
-kappalate <- function(given_formula, data, zmodel = NULL, vce = NULL, std = NULL, which = NULL, subset = NULL, pstolerance = NULL) {
-
-  # Ensure required packages are loaded
-  if (!requireNamespace("formula.tools", quietly = TRUE)) {
-    stop("Package 'formula.tools' is required. Install it using install.packages('formula.tools').")
-  }
-  if (!requireNamespace("geex", quietly = TRUE)) {
-    stop("Package 'geex' is required. Install it using install.packages('geex').")
-  }
-  if (!requireNamespace("Formula", quietly = TRUE)) {
-    stop("Package 'Formula' is required. Install it using install.packages('Formula').")
-  }
-  # Load libraries silently
-  invisible(
-    suppressMessages(
-      suppressWarnings(
-        try({
-          library(formula.tools)
-          library(geex)
-          library(Formula)
-        }, silent = TRUE)
-      )))
+kappalate <- function(given_formula, data, zmodel = "cbps", vce = "robust", std = "on",
+                      which = "norm", subset = NULL, pstolerance = 1e-5) {
 
   # Check whether the formula is valid and raise an error if not.
   is.formula <- function(x){
@@ -125,6 +103,9 @@ kappalate <- function(given_formula, data, zmodel = NULL, vce = NULL, std = NULL
   if (!zmodel %in% c("cbps", "logit", "probit")) {
     stop(sprintf("zmodel = '%s'  not allowed. Allowed values are 'cbps', 'logit', or 'probit'.", zmodel))
   }
+  if (vce != "robust") {
+    stop(sprintf("vce = '%s' not allowed. Only vce = 'robust' is implemented.", vce))
+  }
   if (!std %in% c("on", "off")) {
     stop(sprintf("std = '%s' not allowed. Allowed values are 'on' or 'off'.", std))
   }
@@ -203,6 +184,8 @@ kappalate <- function(given_formula, data, zmodel = NULL, vce = NULL, std = NULL
   } else {
     logit_model <- glm(formula_z, data = data, family = binomial())
     initial <- coef(logit_model)
+    bips <- NULL
+    ips <- NULL
 
   # Then set up the moment condition in geex following covariate balancing by (Imai & Ratkovic, 2013). Here the moment condition is E[((z - pz)/(pz(1-pz)))X] = 0, with pz <- exp(zhat) / (1 + exp(zhat)), and zhat <- X*theta.
     cbps_moment <- function(data){
