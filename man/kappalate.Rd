@@ -4,7 +4,8 @@
 \description{
 \code{kappalate} estimates the local average treatment effect (LATE) using methods based on inverse probability weighting, most of which can be motivated by Abadie's (2003) kappa theorem. See Słoczyński, Uysal, and Wooldridge (2024) for a detailed treatment of the underlying theoretical results.}
 \usage{
-kappalate(given_formula, data, zmodel = "cbps", std = "on", which = "norm", subset = NULL)
+kappalate(given_formula, data, zmodel = "cbps", vce = "robust", std = "on",
+          which = "norm", subset = NULL, pstolerance = 1e-5)
 }
 \arguments{
   \item{given_formula}{
@@ -19,9 +20,10 @@ kappalate(given_formula, data, zmodel = "cbps", std = "on", which = "norm", subs
     }
   \item{data}{Dataframe containing the variables used in the given_formula.}
   \item{zmodel}{Specifies the approach to estimate the instrument propensity score. Options are \code{"logit"}, \code{"probit"}, or \code{"cbps"} (default is \code{"cbps"}).}
-  \item{std}{Determines whether nonbinary covariates are standardized before estimation. Options are \code{"on"} or \code{"off"}. Default is \code{"on"} which is stronly encouraged since convergence will often not be achieved otherwise.}
+  \item{vce}{Type of standard errors. Only \code{"robust"} (heteroskedasticity-robust, based on M-estimation) is implemented.}
+  \item{std}{Determines whether nonbinary covariates are standardized before estimation. Options are \code{"on"} or \code{"off"}. Default is \code{"on"} which is strongly encouraged since convergence will often not be achieved otherwise.}
   \item{which}{Specifies whether to calculate all estimates or only normalized estimates. Options are \code{"all"} or \code{"norm"} (default is \code{"norm"}).} 
-  \item{subset}{Specify only a subset of the dataframe to be used in the estimation. It should either be a numeric vector e.g. subset = c(1,2,3,4) where all specified index values must be part of the dataframe or  a logical vector e.g. subset = c(TRUE, FALSE, FALSE), with length = length of the dataframe.")}
+  \item{subset}{Specify only a subset of the dataframe to be used in the estimation. It should either be a numeric vector e.g. subset = c(1,2,3,4) where all specified index values must be part of the dataframe or  a logical vector e.g. subset = c(TRUE, FALSE, FALSE), with length = length of the dataframe.}
   \item{pstolerance}{Specifies the tolerance for the overlap assumptions check. Must be a single numeric value strictly between 0 and 1. Default is \code{1e-5}. If the overlap assumption is violated the program will return vector of the row indices corresponding to the observations in the passed data frame where the assumption is violated.}
 }
 
@@ -43,23 +45,24 @@ Returns a list of class \code{kappalate} containing:
 }
 
 \examples{
-# use the SIPP data
-install.packages("haven")  # Install if you haven't
-library(haven)
+# SIPP data, as in the Stata help file (requires the haven package)
+if (requireNamespace("haven", quietly = TRUE)) {
+  data <- haven::read_dta(system.file("extdata", "sipp.dta", package = "kappalate"))
+  data <- as.data.frame(data)
 
-data <- read_dta("~/Documents/GitHub/kappalate/stata/sipp.dta")  # Replace with your actual file path
+  # Drop rows where kwage or educ is missing or rsncode == 999
+  data <- data[!(is.na(data$kwage) | is.na(data$educ) | data$rsncode == 999), ]
 
-# Drop rows where kwage is missing (NA) or educ is missing (NA) or rsncode == 999
-data <- data[!(is.na(data$kwage) | is.na(data$educ) | data$rsncode == 999), ]
+  # Log weekly wage
+  data$lwage <- log(data$kwage)
 
-# Create a new variable lwage as the natural log of kwage
-data$lwage <- log(data$kwage)
-
-kappalate_cbps <- kappalate(lwage ~ age_5 | nvstat | rsncode  , data = data, zmodel = "cbps", std = "on",  which = "all")
-kappalate_logit <- kappalate(lwage ~ age_5 | nvstat | rsncode  , data = data, zmodel = "logit", std = "on",  which = "all")
-
-print(kappalate_cbps)
-print(kappalate_logit)
+  kappalate_cbps <- kappalate(lwage ~ age_5 | nvstat | rsncode, data = data,
+                              zmodel = "cbps", which = "all")
+  kappalate_logit <- kappalate(lwage ~ age_5 | nvstat | rsncode, data = data,
+                               zmodel = "logit", which = "all")
+  print(kappalate_cbps)
+  print(kappalate_logit)
+}
 }
 
 \references{
